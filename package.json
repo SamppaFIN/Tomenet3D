@@ -1,0 +1,26 @@
+{
+    "name": "tomenet3d",
+    "version": "1.0.0",
+    "description": "Olloid's Journey - 3D Roguelike built with Three.js and spatial-ui-3d",
+    "type": "module",
+    "scripts": {
+        "dev": "npx http-server . -p 3003 -c-1 --cors",
+        "start": "npx http-server . -p 3003 -c-1 --cors",
+        "test": "npx playwright test",
+        "test:headed": "npx playwright test --headed",
+        "test:ui": "npx playwright test --ui"
+    },
+    "keywords": [
+        "three.js",
+        "roguelike",
+        "3d",
+        "olloid",
+        "gomboc",
+        "tomenet"
+    ],
+    "author": "♾️ Infinite",
+    "license": "MIT",
+    "devDependencies": {
+        "@playwright/test": "^1.58.2"
+    }
+}

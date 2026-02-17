@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TomeNet 3D – Roguelike RPG</title>
+    <meta name="description"
+        content="A 3D roguelike RPG inspired by TomeNET, featuring dungeon crawling, diverse races and classes, and epic combat.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #000;
+            color: #e0d8c8;
+            font-family: 'Inter', sans-serif;
+        }
+
+        #canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* ─── HUD Layer ──────────────────────────────────────────── */
+        #hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-panel {
+            background: linear-gradient(135deg, rgba(10, 8, 20, 0.92), rgba(20, 15, 30, 0.88));
+            border: 1px solid rgba(120, 100, 80, 0.4);
+            border-radius: 8px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        /* ─── Tooltip ─────────────────────────────────────────── */
+        #tooltip {
+            position: fixed;
+            display: none;
+            padding: 10px 14px;
+            background: linear-gradient(135deg, rgba(10, 8, 20, 0.95), rgba(20, 15, 30, 0.92));
+            border: 1px solid rgba(120, 100, 80, 0.5);
+            border-radius: 6px;
+            backdrop-filter: blur(8px);
+            color: #e0d8c8;
+            font-size: 0.8em;
+            z-index: 100;
+            pointer-events: none;
+            max-width: 200px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+        }
+
+        #tooltip h3 {
+            font-family: 'Cinzel', serif;
+            color: #c8a84e;
+            margin-bottom: 4px;
+            font-size: 1em;
+        }
+
+        #tooltip .stat {
+            color: #88cc88;
+            font-size: 0.9em;
+        }
+
+        #tooltip .desc {
+            color: #999;
+            font-style: italic;
+            font-size: 0.85em;
+            margin-top: 4px;
+        }
+
+        /* ─── Context Menu ────────────────────────────────────── */
+        #context-menu {
+            position: fixed;
+            display: none;
+            min-width: 180px;
+            background: linear-gradient(135deg, rgba(12, 10, 24, 0.97), rgba(24, 18, 36, 0.95));
+            border: 1px solid rgba(200, 168, 78, 0.45);
+            border-radius: 8px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 1px rgba(200, 168, 78, 0.3);
+            z-index: 200;
+            padding: 6px 0;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85em;
+            overflow: hidden;
+        }
+
+        #context-menu .ctx-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 16px;
+            color: #d0c8b8;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            user-select: none;
+        }
+
+        #context-menu .ctx-item:hover {
+            background: rgba(200, 168, 78, 0.18);
+            color: #f0e8d0;
+        }
+
+        #context-menu .ctx-item .ctx-icon {
+            font-size: 1.1em;
+            width: 20px;
+            text-align: center;
+        }
+
+        #context-menu .ctx-item .ctx-key {
+            margin-left: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75em;
+            color: rgba(200, 168, 78, 0.5);
+            background: rgba(255, 255, 255, 0.06);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        #context-menu .ctx-separator {
+            height: 1px;
+            background: rgba(120, 100, 80, 0.25);
+            margin: 4px 0;
+        }
+
+        #context-menu .ctx-header {
+            padding: 6px 16px 4px;
+            font-family: 'Cinzel', serif;
+            font-size: 0.75em;
+            color: rgba(200, 168, 78, 0.6);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* ─── Inventory Panel ─────────────────────────────────── */
+        #inventory-panel {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 420px;
+            max-height: 70vh;
+            background: linear-gradient(135deg, rgba(10, 8, 20, 0.96), rgba(20, 15, 30, 0.94));
+            border: 1px solid rgba(200, 168, 78, 0.5);
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            z-index: 200;
+            pointer-events: auto;
+            overflow-y: auto;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        #inventory-panel.open {
+            display: block;
+        }
+
+        #inventory-panel h2 {
+            font-family: 'Cinzel', serif;
+            font-size: 1.1em;
+            color: #c8a84e;
+            margin-bottom: 12px;
+            text-align: center;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        #inventory-panel h3 {
+            font-family: 'Cinzel', serif;
+            font-size: 0.85em;
+            color: rgba(200, 168, 78, 0.7);
+            margin: 12px 0 6px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .inv-equip-slot {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            font-size: 0.82em;
+            color: #aaa;
+            border-bottom: 1px solid rgba(120, 100, 80, 0.15);
+        }
+
+        .inv-equip-slot .slot-label {
+            width: 60px;
+            color: rgba(200, 168, 78, 0.5);
+            text-transform: uppercase;
+            font-size: 0.75em;
+        }
+
+        .inv-equip-slot .slot-item {
+            flex: 1;
+            color: #ddd;
+        }
+
+        .inv-equip-slot .slot-item.empty {
+            color: #555;
+            font-style: italic;
+        }
+
+        .inv-equip-slot .slot-item.cursed {
+            color: #ff4444;
+        }
+
+        .inv-equip-slot .slot-item.enchanted {
+            color: #44ddff;
+        }
+
+        .inv-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            border-bottom: 1px solid rgba(120, 100, 80, 0.12);
+            font-size: 0.82em;
+        }
+
+        .inv-item:hover {
+            background: rgba(200, 168, 78, 0.08);
+        }
+
+        .inv-item .item-name {
+            flex: 1;
+            color: #ddd;
+        }
+
+        .inv-item .item-cat {
+            font-size: 0.7em;
+            color: #888;
+            margin-left: 4px;
+        }
+
+        .inv-item button {
+            background: rgba(200, 168, 78, 0.15);
+            border: 1px solid rgba(200, 168, 78, 0.3);
+            color: #c8a84e;
+            padding: 2px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75em;
+            margin-left: 4px;
+            pointer-events: auto;
+        }
+
+        .inv-item button:hover {
+            background: rgba(200, 168, 78, 0.3);
+        }
+
+        .inv-empty {
+            color: #555;
+            font-style: italic;
+            text-align: center;
+            padding: 12px;
+            font-size: 0.85em;
+        }
+
+        #inv-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.2em;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+
+        #inv-close-btn:hover {
+            color: #fff;
+        }
+
+        /* ─── Top Bar ─────────────────────────────────────────── */
+        #top-bar {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 8px 20px;
+        }
+
+        #game-title {
+            font-family: 'Cinzel', serif;
+            font-size: 1.1em;
+            color: #c8a84e;
+            text-shadow: 0 0 12px rgba(200, 168, 78, 0.3);
+            letter-spacing: 2px;
+        }
+
+        #level-indicator {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+            color: #aaa;
+        }
+
+        #level-indicator .depth {
+            color: #ff8844;
+            font-weight: 700;
+        }
+
+        /* ─── Character Panel (Top Left) ──────────────────────── */
+        #char-panel {
+            position: absolute;
+            top: 60px;
+            left: 12px;
+            width: 240px;
+            padding: 14px;
+        }
+
+        #char-name {
+            font-family: 'Cinzel', serif;
+            font-size: 1.1em;
+            color: #e8d8b0;
+            margin-bottom: 2px;
+        }
+
+        #char-info {
+            font-size: 0.75em;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        /* Stat Bars */
+        .bar-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .bar-label {
+            width: 28px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7em;
+            font-weight: 700;
+            text-align: right;
+            margin-right: 8px;
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease, background 0.3s ease;
+            position: relative;
+        }
+
+        .bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15), transparent);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .bar-text {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6em;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+            z-index: 1;
+        }
+
+        .bar-hp .bar-fill {
+            background: linear-gradient(90deg, #cc2233, #44cc44);
+        }
+
+        .bar-mp .bar-fill {
+            background: linear-gradient(90deg, #2244aa, #44aaff);
+        }
+
+        .bar-xp .bar-fill {
+            background: linear-gradient(90deg, #886600, #ffcc00);
+        }
+
+        /* Stats Row */
+        #stats-row {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 0.6em;
+            color: #777;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-str .stat-value {
+            color: #ff6644;
+        }
+
+        .stat-dex .stat-value {
+            color: #44ff88;
+        }
+
+        .stat-int .stat-value {
+            color: #4488ff;
+        }
+
+        /* ─── Spell Bar (Bottom Center) ───────────────────────── */
+        #spell-bar {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            padding: 10px 16px;
+            pointer-events: auto;
+        }
+
+        .spell-slot {
+            width: 52px;
+            height: 52px;
+            border-radius: 6px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .spell-slot:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .spell-slot .spell-icon {
+            font-size: 1.3em;
+            line-height: 1;
+        }
+
+        .spell-slot .spell-key {
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.55em;
+            color: #aaa;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0 3px;
+            border-radius: 2px;
+        }
+
+        .spell-slot .spell-cd {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 4px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1em;
+            color: #ff6644;
+        }
+
+        .spell-slot.on-cooldown .spell-cd {
+            display: flex;
+        }
+
+        .spell-slot.on-cooldown {
+            opacity: 0.5;
+        }
+
+        .spell-slot.no-mana {
+            border-color: rgba(100, 0, 0, 0.6);
+        }
+
+        .spell-name {
+            font-size: 0.5em;
+            color: #888;
+            margin-top: 2px;
+            white-space: nowrap;
+        }
+
+        /* ─── Game Log (Bottom Left) ──────────────────────────── */
+        #game-log {
+            position: absolute;
+            bottom: 80px;
+            left: 12px;
+            width: 320px;
+            max-height: 180px;
+            padding: 10px 12px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7em;
+            line-height: 1.5;
+        }
+
+        #game-log::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #game-log::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #game-log::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+        }
+
+        .log-entry {
+            color: #999;
+            margin-bottom: 1px;
+        }
+
+        .log-entry:last-child {
+            color: #ddd;
+        }
+
+        /* ─── Minimap (Top Right) ─────────────────────────────── */
+        #minimap {
+            position: absolute;
+            top: 60px;
+            right: 12px;
+            padding: 6px;
+        }
+
+        #minimap canvas {
+            border-radius: 4px;
+            image-rendering: pixelated;
+        }
+
+        #minimap-label {
+            font-size: 0.65em;
+            color: #777;
+            text-align: center;
+            margin-top: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ─── Controls Help (Bottom Right) ────────────────────── */
+        #controls-help {
+            position: absolute;
+            bottom: 80px;
+            right: 12px;
+            width: 180px;
+            padding: 10px;
+            font-size: 0.65em;
+            line-height: 1.8;
+            color: #777;
+        }
+
+        .key {
+            display: inline-block;
+            padding: 1px 5px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            color: #bbb;
+            background: rgba(255, 255, 255, 0.05);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* ─── Game Over Overlay ───────────────────────────────── */
+        #game-over-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        #game-over-overlay.active {
+            display: flex;
+        }
+
+        #game-over-content {
+            text-align: center;
+            padding: 40px 60px;
+            border-radius: 12px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        #game-over-title {
+            font-family: 'Cinzel', serif;
+            font-size: 2.5em;
+            margin-bottom: 12px;
+        }
+
+        #game-over-stats {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+            color: #aaa;
+            line-height: 1.8;
+        }
+
+        #restart-btn {
+            margin-top: 24px;
+            padding: 10px 30px;
+            font-family: 'Cinzel', serif;
+            font-size: 1em;
+            color: #e8d8b0;
+            background: linear-gradient(135deg, rgba(120, 80, 20, 0.6), rgba(80, 50, 10, 0.4));
+            border: 1px solid rgba(200, 168, 78, 0.5);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            pointer-events: auto;
+        }
+
+        #restart-btn:hover {
+            background: linear-gradient(135deg, rgba(160, 100, 20, 0.8), rgba(120, 70, 10, 0.6));
+            box-shadow: 0 0 20px rgba(200, 168, 78, 0.3);
+        }
+
+        /* Animations */
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .damage-flash {
+            animation: pulse 0.15s ease 2;
+        }
+
+        .hud-btn {
+            background: linear-gradient(180deg, #444, #222);
+            border: 1px solid #666;
+            color: #d4af37;
+            padding: 8px 16px;
+            font-family: 'Cinzel', serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: 4px;
+            pointer-events: auto;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+        }
+
+        .hud-btn:hover {
+            background: linear-gradient(180deg, #555, #333);
+            border-color: #ffd700;
+            color: #fff;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .hud-btn:active {
+            transform: translateY(2px);
+        }
+
+        /* Tooltip */
+        #tooltip {
+            position: absolute;
+            background: rgba(10, 8, 20, 0.95);
+            border: 1px solid #786450;
+            color: #e0d8c8;
+            padding: 10px;
+            border-radius: 6px;
+            pointer-events: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            max-width: 250px;
+            backdrop-filter: blur(4px);
+        }
+
+        #tooltip h3 {
+            margin: 0 0 5px 0;
+            font-family: 'Cinzel', serif;
+            color: #ffd700;
+            font-size: 1.1rem;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+            padding-bottom: 3px;
+        }
+
+        #tooltip .stat {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            font-size: 0.85rem;
+        }
+
+        #tooltip .desc {
+            font-style: italic;
+            color: #aaa;
+            margin-top: 5px;
+            font-size: 0.8rem;
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div id="hud">
+        <!-- Top Bar -->
+        <div id="top-bar" class="hud-panel">
+            <span id="game-title">⚔ TomeNet 3D</span>
+            <span id="level-indicator">Depth: <span class="depth">1</span> — <span
+                    id="level-name">Barrow-Downs</span></span>
+        </div>
+
+        <!-- Character Panel -->
+        <div id="char-panel" class="hud-panel">
+            <div id="char-name">Olloid</div>
+            <div id="char-info">Lv.1 Human Warrior</div>
+
+            <div class="bar-row bar-hp">
+                <span class="bar-label" style="color:#cc4444">HP</span>
+                <div class="bar-track">
+                    <div class="bar-fill" id="hp-bar" style="width:100%"></div>
+                    <span class="bar-text" id="hp-text">45/45</span>
+                </div>
+            </div>
+            <div class="bar-row bar-mp">
+                <span class="bar-label" style="color:#4488cc">MP</span>
+                <div class="bar-track">
+                    <div class="bar-fill" id="mp-bar" style="width:100%"></div>
+                    <span class="bar-text" id="mp-text">12/12</span>
+                </div>
+            </div>
+            <div class="bar-row bar-xp">
+                <span class="bar-label" style="color:#ccaa00">XP</span>
+                <div class="bar-track">
+                    <div class="bar-fill" id="xp-bar" style="width:0%"></div>
+                    <span class="bar-text" id="xp-text">0/20</span>
+                </div>
+            </div>
+
+            <div id="stats-row">
+                <div class="stat-item stat-str">
+                    <div class="stat-value" id="stat-str">7</div>
+                    <div class="stat-label">STR</div>
+                </div>
+                <div class="stat-item stat-dex">
+                    <div class="stat-value" id="stat-dex">5</div>
+                    <div class="stat-label">DEX</div>
+                </div>
+                <div class="stat-item stat-int">
+                    <div class="stat-value" id="stat-int">2</div>
+                    <div class="stat-label">INT</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-kills" style="color:#aaa">0</div>
+                    <div class="stat-label">KILLS</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Spell Bar -->
+        <div id="spell-bar" class="hud-panel">
+            <div class="spell-slot" id="spell-fireball" data-spell="fireball">
+                <span class="spell-key">1</span>
+                <span class="spell-icon">🔥</span>
+                <span class="spell-name">Fireball</span>
+                <span class="spell-cd"></span>
+            </div>
+            <div class="spell-slot" id="spell-heal" data-spell="heal">
+                <span class="spell-key">2</span>
+                <span class="spell-icon">💚</span>
+                <span class="spell-name">Heal</span>
+                <span class="spell-cd"></span>
+            </div>
+            <div class="spell-slot" id="spell-lightning" data-spell="lightning">
+                <span class="spell-key">3</span>
+                <span class="spell-icon">⚡</span>
+                <span class="spell-name">Lightning</span>
+                <span class="spell-cd"></span>
+            </div>
+            <div class="spell-slot" id="spell-frostNova" data-spell="frostNova">
+                <span class="spell-key">4</span>
+                <span class="spell-icon">❄️</span>
+                <span class="spell-name">Frost Nova</span>
+                <span class="spell-cd"></span>
+            </div>
+        </div>
+
+        <!-- Game Log -->
+        <div id="game-log" class="hud-panel">
+            <div class="log-entry">Welcome to TomeNet 3D. Press WASD to move.</div>
+        </div>
+
+        <!-- Minimap -->
+        <div id="minimap" class="hud-panel">
+            <canvas id="minimap-canvas" width="125" height="125"></canvas>
+            <div id="minimap-label">Minimap</div>
+        </div>
+
+        <!-- Controls Help -->
+        <div id="controls-help" class="hud-panel">
+            <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span>
+            Move<br>
+            <span class="key">1</span>-<span class="key">4</span> Cast Spells<br>
+            <span class="key">&gt;</span> Descend &nbsp; <span class="key">&lt;</span> Ascend<br>
+            <span class="key">G</span> Pickup &nbsp; <span class="key">.</span> Wait
+        </div>
+        <div style="position: absolute; bottom: 20px; right: 20px; pointer-events: auto;">
+            <button id="reset-cam-btn" class="hud-btn">Reset Camera</button>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="tooltip"></div>
+
+    <!-- Context Menu -->
+    <div id="context-menu"></div>
+
+    <!-- Inventory Panel -->
+    <div id="inventory-panel">
+        <button id="inv-close-btn">&times;</button>
+        <h2>Inventory</h2>
+        <h3>Equipment</h3>
+        <div id="inv-equip"></div>
+        <h3>Items</h3>
+        <div id="inv-items"></div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="game-over-overlay">
+        <div id="game-over-content" class="hud-panel">
+            <div id="game-over-title"></div>
+            <div id="game-over-stats"></div>
+            <button id="restart-btn">Play Again</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Scene3D } from './src/core/Scene3D.js';
+        import { RoguelikeGame } from './src/game/RoguelikeGame.js';
+        import { GameRenderer } from './src/game/GameRenderer.js';
+        import { TutorialSystem } from './src/game/TutorialSystem.js';
+
+        // ─── Initialize ─────────────────────────────────────────
+        const canvas = document.getElementById('canvas');
+        const scene3D = new Scene3D(canvas);
+        const scene = scene3D.getScene();
+        const camera = scene3D.getCamera();
+
+        camera.position.set(0, 18, 20);
+        camera.lookAt(0, 0, 0);
+
+        // Create game with race/class config
+        const game = new RoguelikeGame({ width: 20, height: 20, race: 'human', class: 'warrior' });
+        const renderer = new GameRenderer(scene, camera, game);
+        const tutorial = new TutorialSystem(game);
+
+        // Expose for debugging
+        window.game = game;
+        window.tutorial = tutorial;
+
+        // ─── DOM References ─────────────────────────────────────
+        const els = {
+            charName: document.getElementById('char-name'),
+            charInfo: document.getElementById('char-info'),
+            hpBar: document.getElementById('hp-bar'),
+            hpText: document.getElementById('hp-text'),
+            mpBar: document.getElementById('mp-bar'),
+            mpText: document.getElementById('mp-text'),
+            xpBar: document.getElementById('xp-bar'),
+            xpText: document.getElementById('xp-text'),
+            statStr: document.getElementById('stat-str'),
+            statDex: document.getElementById('stat-dex'),
+            statInt: document.getElementById('stat-int'),
+            statKills: document.getElementById('stat-kills'),
+            levelDepth: document.querySelector('#level-indicator .depth'),
+            levelName: document.getElementById('level-name'),
+            gameLog: document.getElementById('game-log'),
+            gameOverOverlay: document.getElementById('game-over-overlay'),
+            gameOverTitle: document.getElementById('game-over-title'),
+            gameOverStats: document.getElementById('game-over-stats'),
+            restartBtn: document.getElementById('restart-btn'),
+            minimapCanvas: document.getElementById('minimap-canvas'),
+        };
+
+        // Spell slots
+        const spellSlots = {
+            fireball: document.getElementById('spell-fireball'),
+            heal: document.getElementById('spell-heal'),
+            lightning: document.getElementById('spell-lightning'),
+            frostNova: document.getElementById('spell-frostNova'),
+        };
+
+        // ─── Minimap ────────────────────────────────────────────
+        const minimapCtx = els.minimapCanvas.getContext('2d');
+
+        function drawMinimap() {
+            const map = game.state.map;
+            const expl = game.state.explored;
+            const vis = game.state.visibility;
+            if (!expl || !vis) return; // Wait for init
+
+            const w = game.width;
+            const h = game.height;
+            const cw = els.minimapCanvas.width;
+            const ch = els.minimapCanvas.height;
+            const sx = cw / w;
+            const sy = ch / h;
+
+            minimapCtx.fillStyle = '#0a0a14';
+            minimapCtx.fillRect(0, 0, cw, ch);
+
+            // Draw tiles (explored only)
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    if (expl[y][x] === 1) {
+                        if (map[y][x] === 1) {
+                            minimapCtx.fillStyle = vis[y][x] ? '#445577' : '#223344';
+                            minimapCtx.fillRect(x * sx, y * sy, sx, sy);
+                        } else {
+                            // Floor
+                            minimapCtx.fillStyle = vis[y][x] ? '#1a1a2a' : '#11111a';
+                            minimapCtx.fillRect(x * sx, y * sy, sx, sy);
+                        }
+                    }
+                }
+            }
+
+            // Draw stairs (explored)
+            if (game.state.stairs) {
+                const s = game.state.stairs;
+                if (expl[s.y][s.x]) {
+                    minimapCtx.fillStyle = '#ff8800';
+                    minimapCtx.fillRect(s.x * sx, s.y * sy, sx * 1.5, sy * 1.5);
+                }
+            }
+            if (game.state.stairsUp) {
+                const s = game.state.stairsUp;
+                if (expl[s.y][s.x]) {
+                    minimapCtx.fillStyle = '#44ccff';
+                    minimapCtx.fillRect(s.x * sx, s.y * sy, sx * 1.5, sy * 1.5);
+                }
+            }
+
+            // Draw items (explored)
+            for (const item of game.state.items) {
+                if (expl[item.y][item.x]) {
+                    minimapCtx.fillStyle = vis[item.y][item.x] ? '#ffcc00' : '#886600';
+                    minimapCtx.fillRect(item.x * sx, item.y * sy, sx, sy);
+                }
+            }
+
+            // Draw monsters (visible only)
+            for (const e of Object.values(game.state.entities)) {
+                if (e.type === 'monster') {
+                    if (vis[e.y][e.x]) {
+                        minimapCtx.fillStyle = e.boss ? '#ff2200' : '#cc4444';
+                        minimapCtx.fillRect(e.x * sx, e.y * sy, sx, sy);
+                    }
+                }
+            }
+
+            // Draw player
+            if (game.state.player) {
+                minimapCtx.fillStyle = '#00ffcc';
+                minimapCtx.fillRect(
+                    game.state.player.x * sx - 1,
+                    game.state.player.y * sy - 1,
+                    sx + 2, sy + 2
+                );
+            }
+        }
+
+        // ─── HUD Updates ────────────────────────────────────────
+        function updateHUD() {
+            const c = game.state.character;
+            const themes = RoguelikeGame.getLevelThemes();
+            const theme = themes[game.state.currentLevel - 1] || themes[0];
+
+            els.charName.textContent = c.name;
+            els.charInfo.textContent = `Lv.${c.level} ${c.race} ${c.class}`;
+
+            // HP Bar
+            const hpPct = Math.max(0, (c.hp / c.maxHp) * 100);
+            els.hpBar.style.width = hpPct + '%';
+            els.hpText.textContent = `${c.hp}/${c.maxHp}`;
+            // Color gradient based on HP
+            if (hpPct > 60) els.hpBar.style.background = 'linear-gradient(90deg, #228833, #44cc44)';
+            else if (hpPct > 30) els.hpBar.style.background = 'linear-gradient(90deg, #ccaa00, #ffcc00)';
+            else els.hpBar.style.background = 'linear-gradient(90deg, #882222, #cc3333)';
+
+            // MP Bar
+            const mpPct = c.maxMp > 0 ? Math.max(0, (c.mp / c.maxMp) * 100) : 0;
+            els.mpBar.style.width = mpPct + '%';
+            els.mpText.textContent = `${c.mp}/${c.maxMp}`;
+
+            // XP Bar
+            const xpPct = c.xpToNext > 0 ? Math.min(100, (c.xp / c.xpToNext) * 100) : 100;
+            els.xpBar.style.width = xpPct + '%';
+            els.xpText.textContent = `${c.xp}/${c.xpToNext}`;
+
+            // Stats
+            els.statStr.textContent = c.str;
+            els.statDex.textContent = c.dex;
+            els.statInt.textContent = c.int;
+            els.statKills.textContent = c.kills;
+
+            // Level indicator
+            els.levelDepth.textContent = game.state.currentLevel;
+            els.levelName.textContent = theme.name;
+
+            // Spell cooldowns
+            const spells = RoguelikeGame.getSpells();
+            for (const [key, slot] of Object.entries(spellSlots)) {
+                const cd = c.spellCooldowns[key] || 0;
+                const spell = spells[key];
+                const cdEl = slot.querySelector('.spell-cd');
+
+                if (cd > 0) {
+                    slot.classList.add('on-cooldown');
+                    cdEl.textContent = cd;
+                } else {
+                    slot.classList.remove('on-cooldown');
+                    cdEl.textContent = '';
+                }
+
+                if (c.mp < (spell ? spell.mpCost : 0)) {
+                    slot.classList.add('no-mana');
+                } else {
+                    slot.classList.remove('no-mana');
+                }
+            }
+
+            drawMinimap();
+        }
+
+        // ─── Game Log ───────────────────────────────────────────
+        function addLogEntry(message) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = message;
+            els.gameLog.appendChild(entry);
+
+            // Keep last 30 entries
+            while (els.gameLog.children.length > 30) {
+                els.gameLog.removeChild(els.gameLog.firstChild);
+            }
+            els.gameLog.scrollTop = els.gameLog.scrollHeight;
+        }
+
+        // ─── Game Events ────────────────────────────────────────
+        game.subscribe((event, data) => {
+            if (event === 'tick') {
+                updateHUD();
+            } else if (event === 'log') {
+                addLogEntry(data.message);
+            } else if (event === 'level_up') {
+                const charPanel = document.getElementById('char-panel');
+                charPanel.style.boxShadow = '0 0 30px rgba(255,204,0,0.5)';
+                setTimeout(() => { charPanel.style.boxShadow = ''; }, 1000);
+            } else if (event === 'combat' && data.type === 'monster_attack') {
+                const charPanel = document.getElementById('char-panel');
+                charPanel.classList.add('damage-flash');
+                setTimeout(() => charPanel.classList.remove('damage-flash'), 400);
+            } else if (event === 'game_over') {
+                showGameOver(data);
+            }
+        });
+
+        // ─── Game Over ──────────────────────────────────────────
+        function showGameOver(data) {
+            els.gameOverOverlay.classList.add('active');
+            if (data.status === 'won') {
+                els.gameOverTitle.textContent = '🏆 VICTORY!';
+                els.gameOverTitle.style.color = '#ffd700';
+            } else {
+                els.gameOverTitle.textContent = '💀 YOU HAVE FALLEN';
+                els.gameOverTitle.style.color = '#cc3333';
+            }
+            els.gameOverStats.innerHTML = `
+                Level ${data.stats.level} ${data.stats.race} ${data.stats.class}<br>
+                Dungeon Depth: ${data.stats.level}<br>
+                Kills: ${data.stats.kills}<br>
+                XP: ${data.stats.xp}
+            `;
+        }
+
+        els.restartBtn.addEventListener('click', () => {
+            location.reload();
+        });
+
+        // ─── Input Handling ─────────────────────────────────────
+        window.addEventListener('keydown', (e) => {
+            if (game.state.status !== 'playing') return;
+            if (tutorial.currentStep) return; // Block input during tutorial
+
+            const key = e.key.toLowerCase();
+
+            // Auto-run: Shift + direction
+            if (e.shiftKey && !e.ctrlKey) {
+                switch (key) {
+                    case 'w': case 'arrowup': game.startAutoRun(0, -1); return;
+                    case 's': case 'arrowdown': game.startAutoRun(0, 1); return;
+                    case 'a': case 'arrowleft': game.startAutoRun(-1, 0); return;
+                    case 'd': case 'arrowright': game.startAutoRun(1, 0); return;
+                }
+            }
+
+            switch (key) {
+                // Cardinal movement
+                case 'w': case 'arrowup': game.queueAction('move_up'); break;
+                case 's': case 'arrowdown': game.queueAction('move_down'); break;
+                case 'a': case 'arrowleft': game.queueAction('move_left'); break;
+                case 'd': case 'arrowright': game.queueAction('move_right'); break;
+                // Diagonal movement (vi keys)
+                case 'y': game.queueAction('move_up_left'); break;
+                case 'u': game.queueAction('move_up_right'); break;
+                case 'b': game.queueAction('move_down_left'); break;
+                case 'n': game.queueAction('move_down_right'); break;
+                // Spells
+                case '1': game.queueAction('cast_fireball'); break;
+                case '2': game.queueAction('cast_heal'); break;
+                case '3': game.queueAction('cast_lightning'); break;
+                case '4': game.queueAction('cast_frostNova'); break;
+                // Stairs
+                case '>': case '.': game.queueAction(e.shiftKey ? 'descend' : 'wait'); break;
+                case '<': case ',': game.queueAction(e.shiftKey ? 'ascend' : 'wait'); break;
+                // Actions
+                case 'g': game.queueAction('pickup'); break;
+                case 'x': game.queueAction('search'); break;
+                case ' ': game.queueAction('auto_explore'); break;
+                case 'i': toggleInventory(); break;
+            }
+        });
+
+        // Spell slot click handlers
+        for (const [key, slot] of Object.entries(spellSlots)) {
+            slot.addEventListener('click', () => {
+                if (game.state.status === 'playing') {
+                    game.queueAction('cast_' + key);
+                }
+            });
+        }
+
+        // Camera Reset
+        document.getElementById('reset-cam-btn').addEventListener('click', () => {
+            if (game.renderer) game.renderer.resetCamera();
+            // Remove focus from button to prevent keyboard interference
+            document.getElementById('reset-cam-btn').blur();
+        });
+
+        // ─── Right-Click Context Menu ─────────────────────────
+        const ctxMenu = document.getElementById('context-menu');
+        let ctxTarget = null;
+
+        function hideContextMenu() {
+            ctxMenu.style.display = 'none';
+            ctxTarget = null;
+        }
+
+        window.addEventListener('click', hideContextMenu);
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hideContextMenu();
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (game.state.status !== 'playing') return;
+
+            const grid = renderer.getGridFromScreen(e.clientX, e.clientY);
+            if (!grid) return;
+            ctxTarget = grid;
+
+            const items = [];
+            const px = game.state.player.x;
+            const py = game.state.player.y;
+            const tile = game.state.map[grid.y]?.[grid.x];
+            const isPlayerTile = (grid.x === px && grid.y === py);
+
+            // Find entities at target
+            const monsterAt = game.state.entities
+                ? Object.values(game.state.entities).find(ent => ent.type === 'monster' && ent.x === grid.x && ent.y === grid.y)
+                : null;
+            const itemAt = game.state.items
+                ? game.state.items.find(it => it.x === grid.x && it.y === grid.y)
+                : null;
+            const isStairsDown = game.state.stairs && game.state.stairs.x === grid.x && game.state.stairs.y === grid.y;
+            const isStairsUp = game.state.stairsUp && game.state.stairsUp.x === grid.x && game.state.stairsUp.y === grid.y;
+
+            // Move here
+            if (!isPlayerTile && tile !== undefined && tile !== 1) {
+                items.push({
+                    icon: '🚶', label: 'Move here', key: '', action: () => {
+                        game.startPathTo(grid.x, grid.y);
+                    }
+                });
+            }
+
+            // Attack adjacent monster
+            if (monsterAt && Math.abs(grid.x - px) <= 1 && Math.abs(grid.y - py) <= 1) {
+                items.push({
+                    icon: '⚔️', label: `Attack ${monsterAt.name}`, key: '', action: () => {
+                        const dx = grid.x - px;
+                        const dy = grid.y - py;
+                        if (dx === 0 && dy < 0) game.queueAction('move_up');
+                        else if (dx === 0 && dy > 0) game.queueAction('move_down');
+                        else if (dx < 0 && dy === 0) game.queueAction('move_left');
+                        else if (dx > 0 && dy === 0) game.queueAction('move_right');
+                        else {
+                            const dm = { '-1,-1': 'move_up_left', '1,-1': 'move_up_right', '-1,1': 'move_down_left', '1,1': 'move_down_right' };
+                            game.queueAction(dm[dx + ',' + dy] || 'wait');
+                        }
+                    }
+                });
+            }
+
+            // Pick up item on player's tile
+            if (itemAt && isPlayerTile) {
+                items.push({ icon: '🎒', label: `Pick up ${itemAt.name}`, key: 'G', action: () => game.queueAction('pickup') });
+            }
+
+            // Stairs
+            if (isStairsDown && isPlayerTile) {
+                items.push({ icon: '⬇️', label: 'Descend stairs', key: '>', action: () => game.queueAction('descend') });
+            }
+            if (isStairsUp && isPlayerTile) {
+                items.push({ icon: '⬆️', label: 'Ascend stairs', key: '<', action: () => game.queueAction('ascend') });
+            }
+
+            // Search & Wait on player tile
+            if (isPlayerTile) {
+                items.push({ icon: '🔍', label: 'Search', key: 'X', action: () => game.queueAction('search') });
+                items.push({ icon: '⏳', label: 'Wait', key: 'Space', action: () => game.queueAction('wait') });
+            }
+
+            if (items.length === 0) return;
+
+            // Build HTML
+            let html = '';
+            items.forEach((it, i) => {
+                html += `<div class="ctx-item" data-idx="${i}">`;
+                html += `<span class="ctx-icon">${it.icon}</span>`;
+                html += `<span>${it.label}</span>`;
+                if (it.key) html += `<span class="ctx-key">${it.key}</span>`;
+                html += '</div>';
+            });
+
+            ctxMenu.innerHTML = html;
+            ctxMenu.style.display = 'block';
+
+            // Clamp to viewport
+            const menuW = ctxMenu.offsetWidth;
+            const menuH = ctxMenu.offsetHeight;
+            let mx = e.clientX, my = e.clientY;
+            if (mx + menuW > window.innerWidth) mx = window.innerWidth - menuW - 8;
+            if (my + menuH > window.innerHeight) my = window.innerHeight - menuH - 8;
+            ctxMenu.style.left = mx + 'px';
+            ctxMenu.style.top = my + 'px';
+
+            // Attach click handlers
+            ctxMenu.querySelectorAll('.ctx-item').forEach(el => {
+                el.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    const idx = parseInt(el.dataset.idx);
+                    if (items[idx]) items[idx].action();
+                    hideContextMenu();
+                });
+            });
+        });
+
+        // ─── Inventory Panel ──────────────────────────────────
+        const invPanel = document.getElementById('inventory-panel');
+        const invEquip = document.getElementById('inv-equip');
+        const invItems = document.getElementById('inv-items');
+
+        function toggleInventory() {
+            invPanel.classList.toggle('open');
+            if (invPanel.classList.contains('open')) renderInventory();
+        }
+
+        function renderInventory() {
+            const ch = game.state.character;
+            // Equipment slots
+            invEquip.innerHTML = '';
+            for (const [slot, item] of Object.entries(ch.equipment)) {
+                const row = document.createElement('div');
+                row.className = 'inv-equip-slot';
+                const label = document.createElement('span');
+                label.className = 'slot-label';
+                label.textContent = slot;
+                const name = document.createElement('span');
+                name.className = 'slot-item';
+                if (item) {
+                    name.textContent = item.name;
+                    if (item.enchantment === 'cursed') name.classList.add('cursed');
+                    else if (item.enchantment === 'enchanted') name.classList.add('enchanted');
+                } else {
+                    name.textContent = '— empty —';
+                    name.classList.add('empty');
+                }
+                row.appendChild(label);
+                row.appendChild(name);
+                invEquip.appendChild(row);
+            }
+
+            // Inventory items
+            invItems.innerHTML = '';
+            if (ch.inventory.length === 0) {
+                invItems.innerHTML = '<div class="inv-empty">No items</div>';
+                return;
+            }
+            ch.inventory.forEach((item, idx) => {
+                const row = document.createElement('div');
+                row.className = 'inv-item';
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'item-name';
+                nameSpan.textContent = item.name;
+                const catSpan = document.createElement('span');
+                catSpan.className = 'item-cat';
+                catSpan.textContent = `[${item.category}]`;
+                row.appendChild(nameSpan);
+                row.appendChild(catSpan);
+
+                const useBtn = document.createElement('button');
+                useBtn.textContent = item.category === 'equipment' ? 'Equip' : 'Use';
+                useBtn.addEventListener('click', () => {
+                    game.useInventoryItem(idx);
+                    renderInventory();
+                    updateHUD();
+                });
+                row.appendChild(useBtn);
+
+                const dropBtn = document.createElement('button');
+                dropBtn.textContent = 'Drop';
+                dropBtn.addEventListener('click', () => {
+                    game.dropItem(idx);
+                    renderInventory();
+                });
+                row.appendChild(dropBtn);
+
+                invItems.appendChild(row);
+            });
+        }
+
+        document.getElementById('inv-close-btn').addEventListener('click', () => {
+            invPanel.classList.remove('open');
+        });
+
+        // Refresh inventory when state changes
+        game.subscribe((event) => {
+            if (event === 'item_pickup' || event === 'inventory_change') {
+                if (invPanel.classList.contains('open')) renderInventory();
+            }
+        });
+
+        // ─── Initial HUD ───────────────────────────────────────
+        updateHUD();
+
+        // ─── Animation Loop ─────────────────────────────────────
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.update();
+            scene3D.render();
+        }
+        animate();
+
+    </script>
+</body>
+
+</html>
